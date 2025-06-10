@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-//Versión 2.1
+// Versión2.11
 pragma solidity >=0.8.2 <0.9.0;
 
 contract auction {
@@ -13,6 +13,7 @@ contract auction {
     address[] biddersHigherOffer; //array de direcciones con los oferentes en las ofertas
     uint256 bidRestComision; //usada para calcular bid menos comisión
     string end; //usada para emitir evento de fin de subasta
+    uint256 timeAuction; //flag de finalización
 
     /*El constructor, ingresa al dueño de la subasta y la duración de la misma*/
     constructor(address _auction, uint256 duration) {
@@ -21,7 +22,7 @@ contract auction {
     }
 
     /*Evento que registra la dirección y monto de la oferta mayor*/
-    event altaOferta(address indexed userAddress, uint256 userId);
+    event altaOferta(address addressHigherOffer, uint256 higherOffer);
     /*Evento de fin de subasta*/
     event finDeSubasta(string end);
 
@@ -34,9 +35,11 @@ contract auction {
 
     /*Función bid, validación y ejecución de ofertas*/
     function bid() external payable {
-        /*Si se terminó el tiempo de la subasta, cambia el estado del flag de subasta 
-        abierta para cerrarla y emite un evento de Subasta cerrada*/
-        if (endAuction == 0) {
+        
+        /*Si se terminó el tiempo de la subasta, cambia el estado del flag 'auctionClosed'
+         de subasta abierta para cerrarla y emite un evento de Subasta cerrada*/
+        timeAuction = endAuction - block.timestamp;
+        if (timeAuction == 0) {
             auctionClosed = true;
             end = "Subastado cerrado";
             emit finDeSubasta(end);
@@ -50,8 +53,8 @@ contract auction {
         /*que la oferta sea mayor que la ultima por un 5%*/    
         require(msg.value >= (higherOffer + (higherOffer * 5 / 100)), ("la oferta debe ser mayor"));
         
-        /* El siguiente 'if' comprueba si el oferente ya había ofertado y logra la mayor oferta 
-         se le devuelve la oferta inferior. Esto asegura que cada oferente tiene una sola oferta
+        /* El siguiente 'if' comprueba si el oferente ya había ofertado, si había ofertado 
+         se le devuelve la oferta anterior. Esto asegura que cada oferente tiene una sola oferta
          y agiliza la devolución al finalizar la subasta.*/
         if (offers[msg.sender] != 0){
             (bool result2, ) = msg.sender.call{value:offers[msg.sender]}("");
@@ -68,6 +71,7 @@ contract auction {
         biddersHigherOffer.push(msg.sender);
         /* emite el evento de que hay una oferta más alta*/
         emit altaOferta(addressHigherOffer, higherOffer);
+        
         /* si ingresa una oferta 10 min antes de terminar, suma otros 10 min a la subasta*/
         if ((endAuction - block.timestamp) <= 600) {
             endAuction += 600;
@@ -76,7 +80,7 @@ contract auction {
 
     /* Función returnBid, permite devolver las ofertas que no ganaron:*/
     function returnBid() onlyOwner external payable{
-        require((auctionClosed = false), "aun activa" );
+        require((auctionClosed == true), "aun activa" );
         /*Pone la oferta más alta del mapping 'offers' en 0 para no devolver al ganador pero si a los perdedores*/
         offers[addressHigherOffer] = 0;
         /* Recorre el array 'biddersHigherOffer' donde extrae las direcciones de los oferentes y las usa,
