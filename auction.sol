@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-// Versión2.11
+// Version2.12
 pragma solidity >=0.8.2 <0.9.0;
 
 contract auction {
@@ -19,6 +19,7 @@ contract auction {
     constructor(address _auction, uint256 duration) {
         owner = _auction;
         endAuction = block.timestamp + duration;
+        auctionClosed = false;
     }
 
     /*Evento que registra la dirección y monto de la oferta mayor*/
@@ -35,20 +36,20 @@ contract auction {
 
     /*Función bid, validación y ejecución de ofertas*/
     function bid() external payable {
-        
+
         /*Si se terminó el tiempo de la subasta, cambia el estado del flag 'auctionClosed'
          de subasta abierta para cerrarla y emite un evento de Subasta cerrada*/
         timeAuction = endAuction - block.timestamp;
-        if (timeAuction == 0) {
+        if (timeAuction <= 0) {
             auctionClosed = true;
             end = "Subastado cerrado";
             emit finDeSubasta(end);
         }
         /*que la subasta esta activa*/   
-        require(!auctionClosed, "subasta cerrada");
+        require((auctionClosed == false), ("Subasta cerrada"));
         
         /*que no se haya agotado el tiempo*/
-        require((block.timestamp < endAuction), "Tiempo agotado");
+        require((block.timestamp < endAuction), ("Tiempo agotado"));
         
         /*que la oferta sea mayor que la ultima por un 5%*/    
         require(msg.value >= (higherOffer + (higherOffer * 5 / 100)), ("la oferta debe ser mayor"));
@@ -73,6 +74,7 @@ contract auction {
         emit altaOferta(addressHigherOffer, higherOffer);
         
         /* si ingresa una oferta 10 min antes de terminar, suma otros 10 min a la subasta*/
+        
         if ((endAuction - block.timestamp) <= 600) {
             endAuction += 600;
         }
@@ -80,9 +82,9 @@ contract auction {
 
     /* Función returnBid, permite devolver las ofertas que no ganaron:*/
     function returnBid() onlyOwner external payable{
-        require((auctionClosed == true), "aun activa" );
         /*Pone la oferta más alta del mapping 'offers' en 0 para no devolver al ganador pero si a los perdedores*/
         offers[addressHigherOffer] = 0;
+        
         /* Recorre el array 'biddersHigherOffer' donde extrae las direcciones de los oferentes y las usa,
         para sacar el valor de la oferta de esa dirección del mapping 'offers'.*/
         for(uint i = 0 ; i < biddersHigherOffer.length ; ++i) {
