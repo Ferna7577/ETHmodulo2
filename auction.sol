@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-// Versión 2
+//Versión 2.1
 pragma solidity >=0.8.2 <0.9.0;
 
 contract auction {
@@ -14,6 +14,7 @@ contract auction {
     uint256 bidRestComision; //usada para calcular bid menos comisión
     string end; //usada para emitir evento de fin de subasta
 
+    /*El constructor, ingresa al dueño de la subasta y la duración de la misma*/
     constructor(address _auction, uint256 duration) {
         owner = _auction;
         endAuction = block.timestamp + duration;
@@ -33,24 +34,41 @@ contract auction {
 
     /*Función bid, validación y ejecución de ofertas*/
     function bid() external payable {
+        /*Si se terminó el tiempo de la subasta, cambia el estado del flag de subasta 
+        abierta para cerrarla y emite un evento de Subasta cerrada*/
         if (endAuction == 0) {
             auctionClosed = true;
             end = "Subastado cerrado";
             emit finDeSubasta(end);
-        }   
+        }
+        /*que la subasta esta activa*/   
         require(!auctionClosed, "subasta cerrada");
-        require((block.timestamp < endAuction), "Tiempo agotado");
-        require(msg.value >= (higherOffer + higherOffer * 5 / 100), ("la oferta debe ser mayor"));
         
+        /*que no se haya agotado el tiempo*/
+        require((block.timestamp < endAuction), "Tiempo agotado");
+        
+        /*que la oferta sea mayor que la ultima por un 5%*/    
+        require(msg.value >= (higherOffer + (higherOffer * 5 / 100)), ("la oferta debe ser mayor"));
+        
+        /* El siguiente 'if' comprueba si el oferente ya había ofertado y logra la mayor oferta 
+         se le devuelve la oferta inferior. Esto asegura que cada oferente tiene una sola oferta
+         y agiliza la devolución al finalizar la subasta.*/
         if (offers[msg.sender] != 0){
             (bool result2, ) = msg.sender.call{value:offers[msg.sender]}("");
             require(result2);
         }
+        /* Agrega la oferta más alta de cada oferente en un mapping*/
         offers[msg.sender] = msg.value; 
+        /* Agrega la oferta más alta actual*/
         higherOffer = msg.value;
+        /* Agrega de quien es la oferta más alta actual*/
         addressHigherOffer = msg.sender;
+        /* Crea una lista de los oferentes, esto sirve para saber si hay dos ofertas del mismo
+        oferente y devolverle la más baja antes de ingresar la más alta*/
         biddersHigherOffer.push(msg.sender);
+        /* emite el evento de que hay una oferta más alta*/
         emit altaOferta(addressHigherOffer, higherOffer);
+        /* si ingresa una oferta 10 min antes de terminar, suma otros 10 min a la subasta*/
         if ((endAuction - block.timestamp) <= 600) {
             endAuction += 600;
         }
