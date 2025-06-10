@@ -1,7 +1,7 @@
 # ETHmodulo2
 Documentación Trabajo Práctico módulo 2 ETH Kipu
-
-El código fuente se subió como auction.sol, al final del código esta la misma docuemntación:
+Versión 2
+El código fuente se subió como auction.sol, el código esta comentado en su totalidad:
 +La subasta es por tiempo definido en el deploy por el constructor del contrato que ejecuta el dueño del mismo.
 +Al finalizar el tiempo se dispara un evento.
 +Es por la oferta más grande, si un oferente hace dos ofertas, la mas baja se le devuelve apenas hace la segunda,
